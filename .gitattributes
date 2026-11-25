@@ -11,3 +11,4 @@
 *.ico binary
 *.ckpt binary
 *.wav binary
+*.html text eol=lf

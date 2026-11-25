@@ -39,7 +39,7 @@ if ($WithModels) {
         Copy-Item "$WithModels\$m.ckpt", "$WithModels\${m}_tokenizer.model" "$out\models\" -Force
     }
 }
-Copy-Item video2doc.ico, README.txt, LICENSE, THIRD_PARTY.md "$out\" -Force
+Copy-Item video2doc.ico, README.txt, LICENSE, THIRD_PARTY.md, ПросмотрDOCX.html "$out\" -Force
 
 # подпись локальным сертификатом, если он есть (только для своей машины: антивирус спокойнее к подписанным exe)
 $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.Subject -like "*CN=Voice2Text*" } | Select-Object -First 1

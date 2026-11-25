@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Просмотр DOCX</title>
+<style>
+:root{--bg:#f1f1ee;--paper:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#dcdcd8;--accent:#2f6fde;--tc:#b4441c;--mark:#ffe36e;--markcur:#ff9d2e;--side:#e9e9e5}
+.dark{--bg:#151618;--paper:#202124;--fg:#e4e4e4;--muted:#9a9aa0;--line:#35363b;--accent:#7aa7ff;--tc:#ff9b6b;--mark:#6b5a00;--markcur:#b85c00;--side:#1b1c1f}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:15px/1.55 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper)}
+.grp{display:flex;align-items:center;gap:4px;padding-right:8px;border-right:1px solid var(--line)}
+.grp:last-child{border:0}
+button{font:inherit;font-size:14px;color:inherit;background:transparent;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#fname{max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}
+#zoomv{min-width:56px}
+input[type=search]{font:inherit;font-size:14px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;width:210px}
+#cnt{min-width:60px;color:var(--muted);font-size:13px}
+main{flex:1;display:flex;min-height:0}
+nav{width:310px;flex:none;overflow:auto;background:var(--side);border-right:1px solid var(--line);font-size:13px;padding:4px 0}
+nav.hidden{display:none}
+nav a{display:block;padding:4px 10px;color:inherit;text-decoration:none;border-left:3px solid transparent;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav a:hover{background:var(--paper)}
+nav a.cur{border-left-color:var(--accent);background:var(--paper)}
+nav a b{color:var(--tc);font-weight:600;margin-right:6px;font-variant-numeric:tabular-nums}
+nav a span{color:var(--muted)}
+nav a.h1{font-weight:700;white-space:normal}
+nav a.h2{padding-left:20px;white-space:normal}
+nav a.h3{padding-left:32px;white-space:normal}
+#scroll{flex:1;overflow:auto}
+#doc{margin:16px auto;padding:28px 40px;background:var(--paper);box-shadow:0 1px 4px rgba(0,0,0,.08);border-radius:4px}
+#doc.fit{margin:0;border-radius:0;padding:20px 28px}
+#scroll.pan{cursor:grabbing;user-select:none}
+#doc img{-webkit-user-drag:none}
+#doc p{margin:.45em 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#doc p.li{padding-left:1.4em;text-indent:-1em}
+#doc p.li::before{content:"•";display:inline-block;width:1em;text-indent:0}
+#doc h1,#doc h2,#doc h3,#doc h4{line-height:1.25;margin:1em 0 .4em}
+#doc .tc{color:var(--tc);font-weight:600;margin:1.4em 0 .3em;font-variant-numeric:tabular-nums}
+#doc figure{margin:.4em 0}
+#doc figure img{display:block;width:100%;height:auto;cursor:zoom-in;border:1px solid var(--line);border-radius:3px;background:#000}
+#doc img.inl{max-width:100%;vertical-align:middle;cursor:zoom-in}
+#doc .noimg{display:inline-block;padding:10px;border:1px dashed var(--line);color:var(--muted)}
+#doc table{border-collapse:collapse;margin:.6em 0;width:100%}
+#doc td{border:1px solid var(--line);padding:4px 6px;vertical-align:top}
+#doc td.vm{border-top-color:transparent}
+#doc td p{margin:.1em 0}
+#doc a{color:var(--accent)}
+mark{background:var(--mark);color:inherit;border-radius:2px}
+mark.cur{background:var(--markcur);outline:2px solid var(--markcur)}
+#empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);text-align:center;padding:20px}
+#empty .big{font-size:20px;color:var(--fg)}
+body.drag #scroll{outline:3px dashed var(--accent);outline-offset:-8px}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.93);display:none;z-index:10;overflow:hidden;cursor:grab;touch-action:none;user-select:none}
+#lb.show{display:block}
+#lb.grab{cursor:grabbing}
+#lbimg{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;-webkit-user-drag:none}
+#lb .bar{position:absolute;left:0;right:0;top:0;display:flex;gap:6px;align-items:center;padding:8px 12px;color:#eee;background:rgba(0,0,0,.65);z-index:1;cursor:default}
+#lb .bar button{color:#eee;border-color:#666}
+#lbcap{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lbpct{min-width:52px;text-align:right;color:#bbb}
+#lb .hint{position:absolute;bottom:6px;left:0;right:0;text-align:center;color:#999;font-size:12px;pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="grp">
+    <button id="bToc" title="Оглавление по таймкодам и заголовкам">☰</button>
+    <button id="bOpen" title="Открыть .docx (или перетащите файл в окно)">Открыть</button>
+    <button id="bReload" title="Перечитать файл с диска">⟳ Обновить</button>
+    <span id="fname">файл не открыт</span>
+  </div>
+  <div class="grp">
+    <button id="bOut" title="Уменьшить (Ctrl+колёсико)">−</button>
+    <button id="zoomv" title="Сбросить на 100%">100%</button>
+    <button id="bIn" title="Увеличить (Ctrl+колёсико)">+</button>
+    <button id="bFit" title="Растянуть на всю ширину окна">По ширине</button>
+  </div>
+  <div class="grp">
+    <input type="search" id="q" placeholder="Поиск (Ctrl+F)">
+    <button id="bPrev" title="Предыдущее (Shift+Enter)">↑</button>
+    <button id="bNext" title="Следующее (Enter)">↓</button>
+    <span id="cnt"></span>
+  </div>
+  <div class="grp">
+    <button id="bTheme" title="Светлая/тёмная тема">◐</button>
+  </div>
+  <input type="file" id="file" accept=".docx" hidden>
+</header>
+<main>
+  <nav id="toc"></nav>
+  <div id="scroll">
+    <div id="empty">
+      <div class="big">Перетащите .docx в это окно или нажмите «Открыть»</div>
+      <div>Файл читается только в браузере, никуда не отправляется. Word можно не закрывать.</div>
+    </div>
+    <article id="doc" hidden></article>
+  </div>
+</main>
+<div id="lb">
+  <div class="bar">
+    <button id="lPrev" title="Предыдущий кадр (←)">‹</button>
+    <button id="lNext" title="Следующий кадр (→)">›</button>
+    <span id="lbcap"></span>
+    <span id="lbpct"></span>
+    <button id="lOut" title="Уменьшить (−)">−</button>
+    <button id="lIn" title="Увеличить (+)">+</button>
+    <button id="lFit" title="Вписать в экран (0)">Вписать</button>
+    <button id="l1" title="Пиксель в пиксель (1)">1:1</button>
+    <button id="lClose" title="Закрыть (Esc)">✕</button>
+  </div>
+  <img id="lbimg" alt="">
+  <div class="hint">Колёсико — масштаб к курсору · перетаскивание — сдвиг · двойной клик — приблизить/вписать · ← → — соседние кадры · Esc — закрыть</div>
+</div>
+<script>
+'use strict';
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const $ = s => document.querySelector(s);
+const doc = $('#doc'), scroller = $('#scroll'), nav = $('#toc');
+const S = { zoom: 1, fit: false, images: [], toc: [], urls: [], handle: null, name: '', mtime: 0, busy: false };
+const ls = (k, v) => v === undefined ? localStorage.getItem('dv.' + k) : localStorage.setItem('dv.' + k, v);
+
+/* ---------- ZIP (без библиотек: DecompressionStream) ---------- */
+async function openZip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  }
+  if (e < 0) throw new Error('это не .docx (ZIP-каталог не найден)');
+  const n = dv.getUint16(e + 10, true);
+  let p = dv.getUint32(e + 16, true);
+  const td = new TextDecoder(), map = new Map();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('повреждённый ZIP');
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    const off = dv.getUint32(p + 42, true);
+    map.set(td.decode(u8.subarray(p + 46, p + 46 + nl)), { method, csize, off });
+    p += 46 + nl + xl + cl;
+  }
+  async function bytes(name) {
+    const f = map.get(name);
+    if (!f) return null;
+    const ds = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true);
+    const raw = u8.subarray(ds, ds + f.csize);
+    if (f.method === 0) return raw;
+    if (f.method !== 8) throw new Error('неподдерживаемый метод сжатия ' + f.method);
+    const st = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(st).arrayBuffer());
+  }
+  return { bytes, text: async n => { const b = await bytes(n); return b && new TextDecoder().decode(b); } };
+}
+
+/* ---------- Разбор document.xml ---------- */
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
+const TC_RE = /^\[(\d{1,2}:\d{2}(?::\d{2})?)\]$/;
+const child = (n, name) => { if (n) for (const c of n.children) if (c.namespaceURI === W && c.localName === name) return c; return null; };
+const wv = n => n ? n.getAttributeNS(W, 'val') : null;
+const isOn = n => { if (!n) return false; const v = wv(n); return v === null || v === '' || !/^(0|false|off|none)$/i.test(v); };
+function resolvePath(t) {
+  if (t.startsWith('/')) return t.slice(1);
+  const out = [];
+  for (const s of ('word/' + t).split('/')) { if (s === '..') out.pop(); else if (s && s !== '.') out.push(s); }
+  return out.join('/');
+}
+
+async function render(buf) {
+  const zip = await openZip(buf);
+  const xml = await zip.text('word/document.xml');
+  if (!xml) throw new Error('в файле нет word/document.xml');
+  const rels = new Map();
+  const relsXml = await zip.text('word/_rels/document.xml.rels');
+  if (relsXml) {
+    const d = new DOMParser().parseFromString(relsXml, 'application/xml');
+    for (const r of d.getElementsByTagName('Relationship'))
+      rels.set(r.getAttribute('Id'), { t: r.getAttribute('Target') || '', ext: r.getAttribute('TargetMode') === 'External' });
+  }
+  const xd = new DOMParser().parseFromString(xml, 'application/xml');
+  if (xd.getElementsByTagName('parsererror').length) throw new Error('не удалось разобрать document.xml');
+  const body = xd.getElementsByTagNameNS(W, 'body')[0];
+
+  const images = [], urls = [], toc = [], cache = new Map();
+  let curTc = '', pendingTc = null, idn = 0;
+
+  async function imgUrl(rid) {
+    if (cache.has(rid)) return cache.get(rid);
+    let url = null;
+    const r = rels.get(rid);
+    if (r && !r.ext) {
+      const path = resolvePath(r.t), mime = MIME[path.split('.').pop().toLowerCase()];
+      const b = mime && await zip.bytes(path);
+      if (b) { url = URL.createObjectURL(new Blob([b], { type: mime })); urls.push(url); }
+    }
+    cache.set(rid, url);
+    return url;
+  }
+  async function pics(node, dst) {
+    const ids = [];
+    for (const b of node.getElementsByTagNameNS('*', 'blip')) { const id = b.getAttributeNS(R, 'embed'); if (id) ids.push(id); }
+    for (const v of node.getElementsByTagNameNS('*', 'imagedata')) { const id = v.getAttributeNS(R, 'id'); if (id) ids.push(id); }
+    // Размер из Word (EMU) резервирует место под картинку до её загрузки — страница не «прыгает»
+    const ext = node.getElementsByTagNameNS('*', 'extent')[0];
+    const ew = ext ? Math.round(+ext.getAttribute('cx') / 9525) : 0, eh = ext ? Math.round(+ext.getAttribute('cy') / 9525) : 0;
+    for (const id of ids) {
+      const url = await imgUrl(id);
+      if (url) {
+        const img = document.createElement('img');
+        img.className = 'inl'; img.src = url; img.loading = 'lazy'; img.decoding = 'async';
+        if (ew > 0 && eh > 0) { img.width = ew; img.height = eh; }
+        img.dataset.i = images.length;
+        images.push({ url, cap: curTc });
+        dst.append(img);
+      } else {
+        const s = document.createElement('span');
+        s.className = 'noimg'; s.textContent = '[изображение в неподдерживаемом формате]';
+        dst.append(s);
+      }
+    }
+  }
+  async function run(r, target) {
+    const rPr = child(r, 'rPr');
+    let dst = target;
+    if (rPr) {
+      const tags = [];
+      if (isOn(child(rPr, 'b'))) tags.push('b');
+      if (isOn(child(rPr, 'i'))) tags.push('i');
+      if (isOn(child(rPr, 'u'))) tags.push('u');
+      if (isOn(child(rPr, 'strike'))) tags.push('s');
+      const va = wv(child(rPr, 'vertAlign'));
+      if (va === 'superscript') tags.push('sup'); else if (va === 'subscript') tags.push('sub');
+      let outer = null;
+      for (const t of tags) { const e = document.createElement(t); if (outer) dst.append(e); else outer = e; dst = e; }
+      if (outer) target.append(outer); else dst = target;
+    }
+    for (const c of r.children) {
+      const ln = c.localName;
+      if (c.namespaceURI === W) {
+        if (ln === 't') dst.append(c.textContent);
+        else if (ln === 'tab') dst.append('\t');
+        else if (ln === 'br' || ln === 'cr') dst.append(document.createElement('br'));
+        else if (ln === 'noBreakHyphen') dst.append('‑');
+        else if (ln === 'drawing' || ln === 'pict' || ln === 'object') await pics(c, dst);
+      } else if (ln === 'AlternateContent' && c.firstElementChild) {
+        await pics(c.firstElementChild, dst);
+      }
+    }
+  }
+  async function inline(node, target) {
+    for (const n of node.children) {
+      if (n.namespaceURI !== W) continue;
+      const ln = n.localName;
+      if (ln === 'r') await run(n, target);
+      else if (ln === 'hyperlink') {
+        const r = rels.get(n.getAttributeNS(R, 'id'));
+        let a;
+        if (r && r.ext && /^(https?:|mailto:)/i.test(r.t)) { a = document.createElement('a'); a.href = r.t; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+        else a = document.createElement('span');
+        await inline(n, a);
+        target.append(a);
+      }
+      else if (ln === 'pPr' || ln === 'del' || ln === 'moveFrom') continue;
+      else await inline(n, target);
+    }
+  }
+  function headingLevel(pPr) {
+    const st = wv(child(pPr, 'pStyle')) || '';
+    let m = /^(?:heading|заголовок)\s*(\d)$/i.exec(st) || /^(\d)$/.exec(st);
+    if (m) return Math.min(+m[1], 4);
+    if (/^title$/i.test(st)) return 1;
+    const ol = wv(child(pPr, 'outlineLvl'));
+    if (ol !== null && +ol < 9) return Math.min(+ol + 1, 4);
+    return 0;
+  }
+  async function para(p, target) {
+    const pPr = child(p, 'pPr');
+    const frag = document.createDocumentFragment();
+    await inline(p, frag);
+    const holder = document.createElement('div');
+    holder.append(frag);
+    const txt = holder.textContent.trim();
+    const imgs = holder.querySelectorAll('img');
+    if (!txt) {
+      if (imgs.length) for (const img of imgs) {
+        img.className = '';
+        const f = document.createElement('figure'); f.append(img); target.append(f);
+      } else for (const s of holder.querySelectorAll('.noimg')) target.append(s);
+      return;
+    }
+    const tm = TC_RE.exec(txt);
+    if (tm) {
+      const el = document.createElement('div');
+      el.className = 'tc'; el.id = 'tc' + (++idn); el.textContent = txt;
+      target.append(el);
+      curTc = tm[1];
+      pendingTc = { el, kind: 'tc', label: tm[1], snip: '' };
+      toc.push(pendingTc);
+      return;
+    }
+    const lvl = headingLevel(pPr);
+    let el;
+    if (lvl) {
+      el = document.createElement('h' + lvl);
+      el.id = 'h' + (++idn);
+      toc.push({ el, kind: 'h' + lvl, label: txt });
+    } else {
+      el = document.createElement('p');
+      if (child(pPr, 'numPr')) el.className = 'li';
+      const jc = wv(child(pPr, 'jc'));
+      if (jc === 'center' || jc === 'right') el.style.textAlign = jc;
+      if (pendingTc) { pendingTc.snip = txt.slice(0, 90); pendingTc = null; }
+    }
+    el.append(...holder.childNodes);
+    target.append(el);
+  }
+  async function table(t, target) {
+    const tb = document.createElement('table');
+    for (const tr of t.children) {
+      if (tr.localName !== 'tr') continue;
+      const row = tb.insertRow();
+      for (const tc of tr.children) {
+        if (tc.localName !== 'tc') continue;
+        const pr = child(tc, 'tcPr'), cell = row.insertCell();
+        const gs = wv(child(pr, 'gridSpan'));
+        if (gs) cell.colSpan = +gs;
+        const vm = child(pr, 'vMerge');
+        if (vm && wv(vm) !== 'restart') { cell.className = 'vm'; continue; }
+        await blocks(tc, cell);
+      }
+    }
+    target.append(tb);
+  }
+  async function blocks(parent, target) {
+    for (const n of parent.children) {
+      if (n.namespaceURI !== W) continue;
+      const ln = n.localName;
+      if (ln === 'p') await para(n, target);
+      else if (ln === 'tbl') await table(n, target);
+      else if (ln === 'sdt') { const c = child(n, 'sdtContent'); if (c) await blocks(c, target); }
+      else if (ln === 'customXml') await blocks(n, target);
+    }
+  }
+
+  const out = document.createDocumentFragment();
+  await blocks(body, out);
+  return { out, images, urls, toc };
+}
+
+/* ---------- Показ ---------- */
+function status(msg) { $('#fname').textContent = msg; }
+
+async function show(buf, name, keepPos) {
+  if (S.busy) return;
+  S.busy = true;
+  const prevPos = scroller.scrollTop;
+  status('Загрузка…');
+  try {
+    const r = await render(buf);
+    S.urls.forEach(u => URL.revokeObjectURL(u));
+    Object.assign(S, { images: r.images, urls: r.urls, toc: r.toc, name });
+    doc.replaceChildren(r.out);
+    doc.hidden = false; $('#empty').hidden = true;
+    buildToc();
+    $('#fname').textContent = name; $('#fname').title = name;
+    document.title = name + ' — Просмотр DOCX';
+    const saved = parseFloat(ls('pos.' + name));
+    scroller.scrollTop = keepPos ? prevPos : (saved ? saved * scroller.scrollHeight : 0);
+    if ($('#q').value) search($('#q').value, true);
+    onScroll();
+  } catch (e) {
+    console.error(e);
+    status('Ошибка: ' + e.message);
+  } finally { S.busy = false; }
+}
+
+function buildToc() {
+  const frag = document.createDocumentFragment();
+  S.toc.forEach((t, i) => {
+    const a = document.createElement('a');
+    a.href = '#' + t.el.id; a.className = t.kind; a.dataset.i = i;
+    if (t.kind === 'tc') {
+      const b = document.createElement('b'); b.textContent = t.label;
+      const s = document.createElement('span'); s.textContent = t.snip;
+      a.append(b, s); a.title = t.label + ' ' + t.snip;
+    } else { a.textContent = t.label; a.title = t.label; }
+    frag.append(a);
+  });
+  nav.replaceChildren(frag);
+}
+nav.addEventListener('click', e => {
+  const a = e.target.closest('a'); if (!a) return;
+  e.preventDefault();
+  S.toc[+a.dataset.i].el.scrollIntoView({ block: 'start' });
+});
+
+let scrollRaf = 0, posTimer = 0, curToc = -1;
+function onScroll() {
+  scrollRaf = 0;
+  if (!S.toc.length) return;
+  const top = scroller.getBoundingClientRect().top + 60;
+  let lo = 0, hi = S.toc.length - 1, idx = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (S.toc[mid].el.getBoundingClientRect().top <= top) { idx = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  if (idx === curToc) return;
+  const links = nav.children;
+  if (curToc >= 0 && links[curToc]) links[curToc].classList.remove('cur');
+  curToc = idx;
+  if (idx >= 0 && links[idx]) { links[idx].classList.add('cur'); links[idx].scrollIntoView({ block: 'nearest' }); }
+}
+scroller.addEventListener('scroll', () => {
+  if (!scrollRaf) scrollRaf = requestAnimationFrame(onScroll);
+  clearTimeout(posTimer);
+  posTimer = setTimeout(() => { if (S.name && scroller.scrollHeight) ls('pos.' + S.name, scroller.scrollTop / scroller.scrollHeight); }, 300);
+});
+
+/* ---------- Масштаб документа ---------- */
+/* Ширина документа задаётся «до масштаба»: при zoom > 1 он шире окна и прокручивается вбок. */
+const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 8];
+function layout() {
+  const cw = scroller.clientWidth;
+  const base = S.fit ? cw : Math.min(900, cw - 32);
+  doc.style.width = Math.max(320, base) + 'px';
+}
+// mx, my — точка окна, которая остаётся на месте при смене масштаба (курсор или центр)
+function setZoom(z, mx, my) {
+  if (mx === undefined) { mx = scroller.clientWidth / 2; my = scroller.clientHeight / 2; }
+  const fx = scroller.scrollWidth ? (scroller.scrollLeft + mx) / scroller.scrollWidth : 0;
+  const fy = scroller.scrollHeight ? (scroller.scrollTop + my) / scroller.scrollHeight : 0;
+  S.zoom = Math.min(8, Math.max(0.4, Math.round(z * 100) / 100));
+  doc.style.zoom = S.zoom;
+  $('#zoomv').textContent = Math.round(S.zoom * 100) + '%';
+  scroller.scrollLeft = fx * scroller.scrollWidth - mx;
+  scroller.scrollTop = fy * scroller.scrollHeight - my;
+  ls('zoom', S.zoom);
+}
+function stepZoom(dir) {
+  const z = dir > 0 ? STEPS.find(s => s > S.zoom + 0.001) : [...STEPS].reverse().find(s => s < S.zoom - 0.001);
+  setZoom(z ?? S.zoom);
+}
+function setFit(on) { S.fit = on; doc.classList.toggle('fit', on); $('#bFit').classList.toggle('on', on); ls('fit', on ? 1 : 0); layout(); }
+$('#bIn').onclick = () => stepZoom(1);
+$('#bOut').onclick = () => stepZoom(-1);
+$('#zoomv').onclick = () => setZoom(1);
+$('#bFit').onclick = () => setFit(!S.fit);
+new ResizeObserver(layout).observe(scroller);
+scroller.addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  const r = scroller.getBoundingClientRect();
+  setZoom(S.zoom * Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+
+/* Перетаскивание картинки мышью двигает документ; простой клик открывает кадр. */
+let pan = null, panned = false;
+scroller.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !e.target.closest('#doc img')) return;
+  e.preventDefault();
+  pan = { x: e.clientX, y: e.clientY, l: scroller.scrollLeft, t: scroller.scrollTop };
+  panned = false;
+});
+addEventListener('pointermove', e => {
+  if (!pan) return;
+  const dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+  if (!panned && Math.abs(dx) + Math.abs(dy) < 5) return;
+  panned = true; scroller.classList.add('pan');
+  scroller.scrollLeft = pan.l - dx; scroller.scrollTop = pan.t - dy;
+});
+addEventListener('pointerup', () => { pan = null; scroller.classList.remove('pan'); });
+
+/* ---------- Поиск ---------- */
+let hits = [], hit = -1, qTimer = 0;
+function clearMarks() {
+  for (const m of doc.querySelectorAll('mark')) m.replaceWith(m.textContent);
+  doc.normalize(); hits = []; hit = -1;
+}
+function search(q, quiet) {
+  clearMarks();
+  if (!q) { $('#cnt').textContent = ''; return; }
+  const ql = q.toLowerCase();
+  const tw = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT), nodes = [];
+  while (tw.nextNode()) nodes.push(tw.currentNode);
+  for (const t of nodes) {
+    const s = t.nodeValue, sl = s.toLowerCase();
+    let i = sl.indexOf(ql);
+    if (i < 0) continue;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    while (i >= 0) {
+      frag.append(s.slice(last, i));
+      const m = document.createElement('mark'); m.textContent = s.slice(i, i + q.length);
+      frag.append(m); hits.push(m);
+      last = i + q.length; i = sl.indexOf(ql, last);
+    }
+    frag.append(s.slice(last));
+    t.replaceWith(frag);
+  }
+  if (quiet) { $('#cnt').textContent = hits.length ? '— / ' + hits.length : 'нет'; return; }
+  goHit(0);
+}
+function goHit(i) {
+  if (!hits.length) { $('#cnt').textContent = $('#q').value ? 'нет' : ''; return; }
+  if (hit >= 0) hits[hit].classList.remove('cur');
+  hit = (i + hits.length) % hits.length;
+  hits[hit].classList.add('cur');
+  hits[hit].scrollIntoView({ block: 'center' });
+  $('#cnt').textContent = (hit + 1) + ' / ' + hits.length;
+}
+$('#q').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => search(e.target.value), 250); });
+$('#q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault(); clearTimeout(qTimer);
+  if (!hits.length) search(e.target.value); else goHit(hit + (e.shiftKey ? -1 : 1));
+});
+$('#bNext').onclick = () => goHit(hit + 1);
+$('#bPrev').onclick = () => goHit(hit - 1);
+
+/* ---------- Просмотр кадра ---------- */
+const lb = $('#lb'), lbimg = $('#lbimg');
+const L = { i: 0, s: 1, x: 0, y: 0, drag: null, moved: false };
+const BAR = 48;
+function lbApply() {
+  lbimg.style.transform = `translate(${L.x}px,${L.y}px) scale(${L.s})`;
+  $('#lbpct').textContent = Math.round(L.s * 100) + '%';
+}
+function lbFit() {
+  const w = lbimg.naturalWidth, h = lbimg.naturalHeight;
+  if (!w) return;
+  const vw = innerWidth, vh = innerHeight - BAR;
+  L.s = Math.min(vw / w, vh / h);
+  L.x = (vw - w * L.s) / 2; L.y = BAR + (vh - h * L.s) / 2;
+  lbApply();
+}
+function lbZoomAt(cx, cy, f) {
+  const ns = Math.min(30, Math.max(0.05, L.s * f)), k = ns / L.s;
+  L.x = cx - (cx - L.x) * k; L.y = cy - (cy - L.y) * k; L.s = ns;
+  lbApply();
+}
+function lbOne() {
+  const cx = innerWidth / 2, cy = (innerHeight + BAR) / 2;
+  lbZoomAt(cx, cy, 1 / L.s);
+}
+function lbOpen(i) {
+  if (!S.images.length) return;
+  L.i = (i + S.images.length) % S.images.length;
+  const im = S.images[L.i];
+  lbimg.onload = lbFit;
+  lbimg.src = im.url;
+  if (lbimg.complete && lbimg.naturalWidth) lbFit();
+  $('#lbcap').textContent = (im.cap ? '[' + im.cap + ']  ' : '') + 'кадр ' + (L.i + 1) + ' из ' + S.images.length;
+  lb.classList.add('show');
+}
+function lbClose() { lb.classList.remove('show'); }
+doc.addEventListener('click', e => {
+  const img = e.target.closest('img[data-i]');
+  if (img && !panned) lbOpen(+img.dataset.i);
+  panned = false;
+});
+lb.addEventListener('wheel', e => {
+  e.preventDefault();
+  lbZoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+}, { passive: false });
+lb.addEventListener('pointerdown', e => {
+  if (e.target.closest('.bar') || e.button !== 0) return;
+  L.drag = { x: e.clientX, y: e.clientY }; L.moved = false;
+  lb.setPointerCapture(e.pointerId); lb.classList.add('grab');
+});
+lb.addEventListener('pointermove', e => {
+  if (!L.drag) return;
+  const dx = e.clientX - L.drag.x, dy = e.clientY - L.drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) L.moved = true;
+  L.x += dx; L.y += dy; L.drag = { x: e.clientX, y: e.clientY };
+  lbApply();
+});
+lb.addEventListener('pointerup', e => {
+  if (!L.drag) return;
+  L.drag = null; lb.classList.remove('grab');
+  if (!L.moved && e.target === lb) lbClose();
+});
+lb.addEventListener('dblclick', e => {
+  if (e.target.closest('.bar')) return;
+  const w = lbimg.naturalWidth, h = lbimg.naturalHeight;
+  const fitS = Math.min(innerWidth / w, (innerHeight - BAR) / h);
+  if (L.s > fitS * 1.05) lbFit(); else lbZoomAt(e.clientX, e.clientY, 2.5);
+});
+$('#lPrev').onclick = () => lbOpen(L.i - 1);
+$('#lNext').onclick = () => lbOpen(L.i + 1);
+$('#lIn').onclick = () => lbZoomAt(innerWidth / 2, (innerHeight + BAR) / 2, 1.25);
+$('#lOut').onclick = () => lbZoomAt(innerWidth / 2, (innerHeight + BAR) / 2, 0.8);
+$('#lFit').onclick = lbFit;
+$('#l1').onclick = lbOne;
+$('#lClose').onclick = lbClose;
+addEventListener('resize', () => { if (lb.classList.contains('show')) lbFit(); });
+
+/* ---------- Клавиатура ---------- */
+addEventListener('keydown', e => {
+  if (lb.classList.contains('show')) {
+    const cx = innerWidth / 2, cy = (innerHeight + BAR) / 2;
+    const k = e.key;
+    if (k === 'Escape') lbClose();
+    else if (k === 'ArrowLeft') lbOpen(L.i - 1);
+    else if (k === 'ArrowRight') lbOpen(L.i + 1);
+    else if (k === '+' || k === '=') lbZoomAt(cx, cy, 1.25);
+    else if (k === '-') lbZoomAt(cx, cy, 0.8);
+    else if (k === '0') lbFit();
+    else if (k === '1') lbOne();
+    else return;
+    e.preventDefault();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f' || e.key === 'F3') {
+    e.preventDefault(); $('#q').focus(); $('#q').select();
+  } else if (e.key === 'Escape' && document.activeElement === $('#q')) {
+    $('#q').value = ''; search(''); $('#q').blur();
+  }
+});
+
+/* ---------- Файлы: открыть, перетащить, запомнить, автообновление ---------- */
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('docx-viewer', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function kv(key, val) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', val === undefined ? 'readonly' : 'readwrite');
+    const st = tx.objectStore('kv');
+    const rq = val === undefined ? st.get(key) : st.put(val, key);
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+  });
+}
+async function remember(buf, name, handle) {
+  try { await kv('last', { name, buf, handle }); }
+  catch { try { await kv('last', { name, buf }); } catch (e) { console.warn('не удалось запомнить файл', e); } }
+}
+async function loadFile(f, handle, keepPos) {
+  S.handle = handle || null; S.mtime = f.lastModified;
+  const buf = await f.arrayBuffer();
+  await show(buf, f.name, keepPos);
+  remember(buf, f.name, S.handle);
+}
+async function readHandle(h, keepPos) {
+  let f;
+  try { f = await h.getFile(); }
+  catch (e) { status('Файл недоступен (' + e.message + ')'); return; }
+  await loadFile(f, h, keepPos);
+}
+async function pick() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: 'Документ Word', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }] });
+      return readHandle(h);
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  $('#file').click();
+}
+async function permitted(h, ask) {
+  if (!h || !h.queryPermission) return false;
+  if (await h.queryPermission({ mode: 'read' }) === 'granted') return true;
+  return ask && await h.requestPermission({ mode: 'read' }) === 'granted';
+}
+$('#bOpen').onclick = pick;
+$('#file').onchange = e => { const f = e.target.files[0]; if (f) loadFile(f, null); e.target.value = ''; };
+$('#bReload').onclick = async () => {
+  if (S.handle && await permitted(S.handle, true)) return readHandle(S.handle, true);
+  pick();
+};
+setInterval(async () => {
+  if (!S.handle || S.busy || document.hidden) return;
+  try {
+    if (!await permitted(S.handle, false)) return;
+    const f = await S.handle.getFile();
+    if (f.lastModified !== S.mtime) await loadFile(f, S.handle, true);
+  } catch { /* Word в момент сохранения держит файл — проверим в следующий раз */ }
+}, 3000);
+
+addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag'); });
+addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag'); });
+addEventListener('drop', async e => {
+  e.preventDefault(); document.body.classList.remove('drag');
+  const item = [...e.dataTransfer.items].find(i => i.kind === 'file');
+  if (!item) return;
+  const hp = item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
+  const f = item.getAsFile();
+  const h = hp ? await hp.catch(() => null) : null;
+  if (h && h.kind === 'file') readHandle(h); else if (f) loadFile(f, null);
+});
+
+/* ---------- Тема, панель, старт ---------- */
+function setTheme(dark) { document.documentElement.classList.toggle('dark', dark); ls('dark', dark ? 1 : 0); }
+$('#bTheme').onclick = () => setTheme(!document.documentElement.classList.contains('dark'));
+$('#bToc').onclick = () => { nav.classList.toggle('hidden'); ls('nav', nav.classList.contains('hidden') ? 0 : 1); };
+
+(async function start() {
+  setTheme(ls('dark') === '1');
+  if (ls('nav') === '0') nav.classList.add('hidden');
+  setFit(ls('fit') === '1');
+  setZoom(parseFloat(ls('zoom')) || 1);
+  if (!window.DecompressionStream) { status('Браузер устарел: нужен Chrome/Edge 80+ или Firefox 113+'); return; }
+  const src = new URLSearchParams(location.search).get('src');
+  try {
+    if (src) {
+      const r = await fetch(src);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      await show(await r.arrayBuffer(), decodeURIComponent(src.split('/').pop()));
+      return;
+    }
+    const last = await kv('last');
+    if (last && last.buf) { S.handle = last.handle || null; await show(last.buf, last.name); }
+  } catch (e) { console.warn(e); status('Ошибка: ' + e.message); }
+})();
+</script>
+</body>
+</html>
