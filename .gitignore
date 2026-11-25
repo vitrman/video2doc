@@ -1,0 +1,23 @@
+# Белый список: в репозиторий попадает только перечисленное ниже.
+# Всё остальное (сборки, видео, готовые .docx, модели, локальные черновики) остаётся на диске.
+/*
+!/.gitignore
+!/.gitattributes
+!/video2doc_app.py
+!/asr_engine.py
+!/model_fetch.py
+!/postprocess.py
+!/paths.py
+!/video2doc.spec
+!/build.ps1
+!/make_icon.py
+!/video2doc.ico
+!/requirements.txt
+!/README.md
+!/README.txt
+!/CHANGELOG.md
+!/THIRD_PARTY.md
+!/LICENSE
+
+__pycache__/
+*.pyc

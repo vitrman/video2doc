@@ -1,0 +1,21 @@
+# Python 3.12, Windows x64.
+# torch и torchaudio — CPU-колёса:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+torch
+torchaudio
+
+# GigaAM ставится с GitHub: в PyPI лежит 0.1.0 без моделей v3
+gigaam @ https://github.com/salute-developers/GigaAM/archive/refs/heads/main.zip
+
+numpy
+scipy
+soundfile
+sentencepiece
+omegaconf==2.3.0
+hydra-core==1.3.2
+customtkinter
+darkdetect
+pillow
+
+# сборка exe
+pyinstaller
