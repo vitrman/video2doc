@@ -174,7 +174,7 @@ def run_ffmpeg(args: list, stop: threading.Event) -> None:
         raise RuntimeError("ffmpeg: " + (err[-1] if err else f"код {proc.returncode}"))
 
 
-VERSION = "1.4"
+VERSION = "1.5"
 
 # модели GigaAM: имя -> (подпись в списке, подсказка, имя в docx)
 MODELS = {
@@ -188,9 +188,10 @@ MODELS = {
 DEFAULT_MODEL = "v3_e2e_rnnt"
 CONFIG_FILE = LOG_FILE.parent / "config.json"
 ERROR_LOG = LOG_FILE.parent / "errors.log"
+UPDATE_RESULT = LOG_FILE.parent / "update-result.txt"   # итог замены файлов при обновлении
 # out_dir: "" — сохранять рядом с видео, иначе — в эту папку
 DEFAULTS = {"model": DEFAULT_MODEL, "step": 20, "recursive": False, "overwrite": False, "fillers": True,
-            "frames": True, "quality": "full",
+            "frames": True, "quality": "full", "check_updates": True,
             "out_dir": ""}
 # качество кадров: подпись, подсказка, аргументы ffmpeg, примерный размер кадра в МБ
 QUALITY = {
@@ -524,6 +525,9 @@ class App:
             self.add_source(p)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.after(100, self.poll)
+        self.update_info: dict | None = None
+        self.update_busy = False
+        self._update_startup()
         if auto and paths:
             self.root.after(300, self.start)
 
@@ -545,6 +549,8 @@ class App:
         ctk.CTkLabel(header, text="Видео в Word", font=self.font(20, "bold")).pack(side="left")
         ctk.CTkLabel(header, text=f"GigaAM · {VERSION}", text_color=MUTED,
                      font=self.font(12)).pack(side="left", padx=(10, 0), pady=(6, 0))
+        # появляется, только когда на GitHub есть версия новее
+        self.update_btn = self._button(header, "", self.update_now, primary=True, width=220, height=32)
 
         card = ctk.CTkFrame(left, corner_radius=16, fg_color=CARD)
         card.pack(fill="both", expand=True, pady=(0, 10))
@@ -728,6 +734,13 @@ class App:
         self._refresh_out_label()
         self._hint(panel, "Имя — как у видео. Внутри: время, кадр, текст речи, без итогов и выводов.")
 
+        self._label(panel, "Обновления", top=16)
+        self.var_updates = self._switch(panel, "Проверять при запуске", "check_updates")
+        self._hint(panel, "Новая версия скачивается только по кнопке «Обновить». "
+                          "Настройки и скачанные модели сохраняются.")
+        self._button(panel, "Проверить сейчас", lambda: self.check_updates(manual=True), width=150,
+                     height=30).pack(anchor="w", padx=16, pady=(0, 16))
+
     # ----- настройки -----
     def on_quality(self, label):
         key = next(k for k, v in QUALITY.items() if v[0] == label)
@@ -902,6 +915,8 @@ class App:
                     self.bar.set(((n - 1) + frac) / total)
                     self.status.set(f"Файл {n} из {total}: {stage} {frac * 100:.0f}% · "
                                     f"модель: {MODELS[self.cfg['model']][0]}")
+                elif kind.startswith("update_"):
+                    self._on_update_message(kind, data)
                 elif kind == "finished":
                     done, skipped, failed = data
                     self.start_btn.configure(state="normal")
@@ -915,6 +930,117 @@ class App:
             pass
         self.root.after(150, self.poll)
 
+    # ----- обновление из GitHub Releases -----
+    def _update_startup(self):
+        import update
+        if FROZEN:
+            result = update.read_result(UPDATE_RESULT)
+            if result.startswith("ok "):
+                self.log_message(f"Обновление установлено: версия {result.split()[1]}")
+            elif result.startswith("error "):
+                parts = result.split(" ", 2)
+                self.log_message(f"✖ Обновление до версии {parts[1]} не установилось: "
+                                 f"{parts[2] if len(parts) > 2 else 'причина неизвестна'}\n"
+                                 "    Работает прежняя версия. Файлы могла держать другая программа "
+                                 "(например антивирус) — попробуйте обновиться ещё раз.")
+            threading.Thread(target=update.cleanup, args=(APP_DIR, VERSION), daemon=True).start()
+        if self.cfg["check_updates"] and not self.auto:
+            self.root.after(1500, self.check_updates)
+
+    def check_updates(self, manual: bool = False):
+        def work():
+            import update
+            try:
+                info = update.check(VERSION)
+            except Exception as exc:  # сеть, GitHub, разбор ответа — при автопроверке молчим
+                self.msgs.put(("update_none", (manual, f"Проверить обновления не удалось: {exc}")))
+                return
+            if info:
+                self.msgs.put(("update_found", info))
+            else:
+                self.msgs.put(("update_none", (manual, f"У вас последняя версия ({VERSION}).")))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_update_message(self, kind: str, data):
+        if kind == "update_found":
+            self.update_info = data
+            self.update_btn.configure(text=f"⬆  Обновить до {data['version']}", state="normal")
+            self.update_btn.pack(side="right")
+            self.log_message(f"Доступна версия {data['version']} — кнопка «Обновить» вверху справа.")
+        elif kind == "update_none":
+            manual, text = data
+            if manual:
+                self.log_message(text)
+                messagebox.showinfo("Video2Doc", text)
+        elif kind == "update_progress":
+            done, total = data
+            self.bar.set(done / total if total else 0)
+            if (done, total) == (1, 1):
+                self.status.set(f"Обновление {self.update_info['version']} скачано, распаковываю…")
+            else:
+                self.status.set(f"Скачиваю обновление {self.update_info['version']}: "
+                                f"{done / 1e6:.0f} из {total / 1e6:.0f} МБ")
+        elif kind == "update_failed":
+            self.update_busy = False
+            self.worker.stop.clear()
+            self.start_btn.configure(state="normal")
+            self.stop_btn.configure(state="disabled")
+            self.update_btn.configure(state="normal")
+            self.bar.set(0)
+            self.status.set("Обновление не выполнено")
+            self.log_message(f"✖ Обновление не выполнено: {data}")
+            if "отменено" not in str(data):
+                messagebox.showwarning("Video2Doc", f"Обновление не выполнено: {data}\n\n"
+                                                    f"Можно скачать вручную: {self.update_info['page']}")
+        elif kind == "update_started":
+            self.log_message("Устанавливаю обновление: программа закроется и запустится снова…")
+            # замена ~800 МБ файлов идёт без окна, поэтому предупреждаем, чтобы не запускали вручную
+            messagebox.showinfo("Video2Doc", "Обновление скачано. Сейчас программа закроется.\n\n"
+                                             "Замена файлов займёт около минуты, затем Video2Doc откроется сам. "
+                                             "Не запускайте его вручную в это время.")
+            self.root.destroy()
+
+    def update_now(self):
+        info = self.update_info
+        if not info or self.update_busy:
+            return
+        if self.thread and self.thread.is_alive():
+            messagebox.showinfo("Video2Doc", "Сначала дождитесь окончания обработки или нажмите «Стоп».")
+            return
+        if not FROZEN:
+            messagebox.showinfo("Video2Doc", "Программа запущена из исходников — обновите их через git.\n"
+                                             f"Страница версии: {info['page']}")
+            return
+        if problem := check_writable(APP_DIR):
+            messagebox.showwarning("Video2Doc", f"Не могу заменить файлы программы.\n{problem}\n\n"
+                                                f"Скачайте новую версию вручную: {info['page']}")
+            return
+        if not messagebox.askyesno("Video2Doc", f"Скачать и установить Video2Doc {info['version']} "
+                                                f"({info['size'] / 1e6:.0f} МБ)?\n\n"
+                                                "После скачивания программа закроется, примерно за минуту "
+                                                "обновится и запустится снова. Настройки и скачанные модели "
+                                                "сохранятся."):
+            return
+        self.update_busy = True
+        self.worker.stop.clear()
+        self.start_btn.configure(state="disabled")
+        self.stop_btn.configure(state="normal")       # «Стоп» отменяет скачивание
+        self.update_btn.configure(state="disabled")
+        self.log_message(f"Скачиваю обновление {info['version']}…")
+
+        def work():
+            import update
+            try:
+                archive = update.download(info, on_progress=lambda d, t: self.msgs.put(("update_progress", (d, t))),
+                                          cancel=self.worker.stop)
+                self.msgs.put(("update_progress", (1, 1)))
+                update.apply(archive, APP_DIR, UPDATE_RESULT, info["version"])
+            except Exception as exc:
+                self.msgs.put(("update_failed", str(exc)))
+                return
+            self.msgs.put(("update_started", None))
+        threading.Thread(target=work, daemon=True).start()
+
     def on_close(self):
         if self.thread and self.thread.is_alive():
             if not messagebox.askyesno("Video2Doc", "Идёт обработка. Остановить и выйти?"):
@@ -927,6 +1053,11 @@ class App:
 
 
 def main():
+    # вторая половина обновления: эту копию программы запустила старая версия из распакованного архива
+    if len(sys.argv) == 6 and sys.argv[1] == "--finish-update":
+        import update
+        update.finish_update(APP_DIR, Path(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4]), sys.argv[5])
+        return
     args = [a for a in sys.argv[1:] if a != "--auto"]
     App(args, "--auto" in sys.argv[1:]).mainloop()
 

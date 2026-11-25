@@ -14,7 +14,7 @@ _VC_DLLS = ("msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "msvcp140_atomic
 _system32 = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
 binaries = [(os.path.join(_system32, n), ".") for n in _VC_DLLS if os.path.isfile(os.path.join(_system32, n))]
 
-hiddenimports = ["asr_engine", "model_fetch", "postprocess", "paths"]
+hiddenimports = ["asr_engine", "model_fetch", "postprocess", "paths", "update"]
 for package in ("gigaam", "hydra", "omegaconf", "sentencepiece", "customtkinter", "darkdetect"):
     try:
         hiddenimports += collect_submodules(package)
