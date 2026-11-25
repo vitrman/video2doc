@@ -15,7 +15,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-$Stage = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot $Stage))
+if (-not [IO.Path]::IsPathRooted($Stage)) { $Stage = Join-Path $PSScriptRoot $Stage }
 New-Item -ItemType Directory -Force "$Stage\tmp" | Out-Null
 $env:TEMP = "$Stage\tmp"; $env:TMP = $env:TEMP
 & $Python -m PyInstaller video2doc.spec --noconfirm --distpath "$Stage\dist" --workpath "$Stage\work"
